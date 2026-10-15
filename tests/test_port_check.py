@@ -1,8 +1,8 @@
 """Tests for port-check."""
 
 import socket
+import sys
 import threading
-import time
 import pytest
 from port_check import check_port, main
 
@@ -54,7 +54,6 @@ def test_main_success(capsys):
     t = threading.Thread(target=accept, daemon=True)
     t.start()
     
-    import sys
     old_argv = sys.argv
     sys.argv = ["port-check", "127.0.0.1", str(port)]
     try:
@@ -71,7 +70,6 @@ def test_main_success(capsys):
 
 def test_main_failure(capsys):
     """Test main with closed port."""
-    import sys
     old_argv = sys.argv
     sys.argv = ["port-check", "127.0.0.1", "59999"]
     try:
@@ -86,7 +84,6 @@ def test_main_failure(capsys):
 
 def test_main_invalid_port(capsys):
     """Test main with invalid port number."""
-    import sys
     old_argv = sys.argv
     sys.argv = ["port-check", "localhost", "99999"]
     try:
@@ -101,7 +98,6 @@ def test_main_invalid_port(capsys):
 
 def test_main_too_few_args(capsys):
     """Test main with insufficient arguments."""
-    import sys
     old_argv = sys.argv
     sys.argv = ["port-check"]
     try:
@@ -116,7 +112,6 @@ def test_main_too_few_args(capsys):
 
 def test_main_custom_timeout(capsys):
     """Test main with custom timeout."""
-    import sys
     old_argv = sys.argv
     sys.argv = ["port-check", "127.0.0.1", "59999", "0.1"]
     try:
@@ -128,7 +123,6 @@ def test_main_custom_timeout(capsys):
 
 def test_main_invalid_timeout(capsys):
     """Test main with invalid timeout."""
-    import sys
     old_argv = sys.argv
     sys.argv = ["port-check", "localhost", "80", "notanumber"]
     try:
@@ -143,7 +137,6 @@ def test_main_invalid_timeout(capsys):
 
 def test_main_module_invocation(capsys):
     """Test that __main__.py works when invoked as module."""
-    import sys
     import subprocess
     result = subprocess.run(
         [sys.executable, "-m", "port_check", "127.0.0.1", "59999"],
@@ -153,3 +146,19 @@ def test_main_module_invocation(capsys):
     )
     assert result.returncode == 1
     assert "closed" in result.stdout
+
+
+def test_main_module_direct_execution(monkeypatch):
+    """Test __main__.py execution path via runpy (covers the __name__ guard)."""
+    import runpy
+    old_argv = sys.argv
+    sys.argv = ["port-check", "127.0.0.1", "59999"]
+    try:
+        # runpy executes the module's top-level code including the
+        # `if __name__ == "__main__": sys.exit(main())` block. A closed port
+        # causes main() to return 1, which propagates as SystemExit.
+        with pytest.raises(SystemExit) as exc:
+            runpy.run_module("port_check.__main__", run_name="__main__")
+        assert exc.value.code == 1
+    finally:
+        sys.argv = old_argv
