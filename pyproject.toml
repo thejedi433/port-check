@@ -3,7 +3,7 @@ name = "port-check"
 version = "0.1.0"
 description = "Check if a port is open on a host"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = []
 
 [project.scripts]
@@ -15,3 +15,19 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["port_check"]
+branch = true
+omit = ["*/port_check/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__."]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-cov>=5.0.0",
+]
